@@ -1,0 +1,14 @@
+import cv2
+import skimage.measure
+import math
+"""
+Note that the two images need to be the same size.
+Img1 represents the experimental temperature distribution map.
+Img2 represents the simulation temperature distribution map.
+Keep the image in a folder with the files
+"""
+img1 = cv2.imread('experiment.png')
+img2 = cv2.imread('gz.png')
+mse = skimage.measure.compare_mse(img1, img2)
+rmse = math.sqrt(mse)
+print(rmse)
