@@ -1,0 +1,24 @@
+i_1 = 0; %循环构建颗粒参数（第0个颗粒）
+model.param.set('i_1',i_1(1)); %COMSOL中设置参数
+r_1 = 0.002; %粒径4mm颗粒半径参数
+while i_1 < data_number %循环构建颗粒
+    i_1 = i_1 + 1; %循环构建颗粒参数（第i_1 + 1个颗粒）
+    model.param.set('i_1',i_1(1)); %COMSOL中设置参数
+    b_1 = data_position(:,i_1); %当前颗粒位置信息
+    
+    x_1 = b_1(1,1); %当前颗粒x轴向位置信息
+    y_1 = b_1(2,1); %当前颗粒y轴向位置信息
+    z_1 = b_1(3,1); %当前颗粒z轴向位置信息
+    model.param.set('x_1',x_1(1)); %COMSOL中设置参数
+    model.param.set('y_1',y_1(1)); %COMSOL中设置参数
+    model.param.set('z_1',z_1(1)); %COMSOL中设置参数
+    c_1 = data_scale; %当前颗粒大小信息
+    r = r_1.* c_1;%颗粒半径信息
+    r_1_1 = r(i_1,:); %颗粒半径信息
+    model.param.set('r_1_1',r_1_1(1)); %COMSOL中设置参数
+    char = strcat('sph',num2str(i_1)); %颗粒名称
+    model.param.set('eee', 'char'); %COMSOL中设置参数
+    model.component('comp1').geom('geom1').create(char, 'Sphere'); %颗粒构建
+    model.component('comp1').geom('geom1').feature(char).set('pos',[x_1 y_1 z_1]); %设置颗粒位置
+    model.component('comp1').geom('geom1').feature(char).set('r', r_1_1); %设置颗粒半径
+end%退出循环
