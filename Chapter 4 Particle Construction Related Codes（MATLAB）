@@ -1,0 +1,71 @@
+%%颗粒信息提取
+h5disp('15.h5');%查找库
+h5disp('15.h5','/TimestepData/15/ParticleTypes/0');%目标库
+data_position=h5read('15.h5','/TimestepData/15/ParticleTypes/0/position');%读取颗粒位置
+data_scale=h5read('15.h5','/TimestepData/15/ParticleTypes/0/scale');%读取颗粒大小
+data_orientation=h5read('15.h5','/TimestepData/15/ParticleTypes/0/orientation')
+;%读取颗粒旋转信息（四元数格式）
+data_number=size(data,2);%读取颗粒个数
+%几何模型导入，中心为几何原点，形状与EDEM中颗粒模型一致
+model.component('comp1').geom('geom1').create('imp1', 'Import');%Comsol导入几何模型模块
+model.component('comp1').geom('geom1').feature('imp1').set('type', 'native');%几何导入模块类型设置
+model.component('comp1').geom('geom1').feature('imp1').set('filename', '模型所在文件夹\文件名.mphbin');%导入几何模型文件
+%%颗粒循环构建
+i_1 = 0; %循环构建颗粒参数（第0个颗粒）
+model.param.set('i_1',i_1(1)); %COMSOL中设置参数
+while i_1 < data_number %循环构建颗粒
+    i_1 = i_1 + 1; %循环构建颗粒参数（第i_1 + 1个颗粒）
+    model.param.set('i_1',i_1(1)); %COMSOL中设置参数
+    b_1 = data_position(:,i_1); %当前颗粒位置信息
+    x_1 = b_1(1,1); %当前颗粒x轴向位置信息
+    y_1 = b_1(2,1); %当前颗粒y轴向位置信息
+    z_1 = b_1(3,1); %当前颗粒z轴向位置信息
+    model.param.set('x_1',x_1(1)); %COMSOL中设置参数
+    model.param.set('y_1',y_1(1)); %COMSOL中设置参数
+    model.param.set('z_1',z_1(1)); %COMSOL中设置参数
+    c_1 = data_scale(i_1,:); %当前颗粒大小信息（半径比例）
+model.param.set('c_1',c_1(1)); %COMSOL中设置参数
+    %颗粒旋转信息提取及转换
+    data_orientation_transportation=data_orientation’;%颗粒旋转信息（四元数格式）转置
+[a_idle(1),a_idle(2),a_idle(3)]=quat2angle(data_orientation_transportation(i_1,:));
+a_idle=a_idle/pi*180;%颗粒旋转信息（四元数格式）转换为颗粒旋转信息（欧拉角格式）
+model.param.set('a_idle_1', a_idle (1)); %COMSOL中设置参数
+model.param.set('a_idle_1', a_idle (2)); %COMSOL中设置参数
+model.param.set('a_idle_1', a_idle (3)); %COMSOL中设置参数
+
+%小标题构建，用于复制、旋转、比例缩放、移动模型
+    char_1 = strcat('copy',num2str(i_1));%颗粒复制标题构建
+    model.param.set('copy_1', 'char_1'); %COMSOL中设置参数
+    char_2 = strcat('rot',num2str(i_1)); %颗粒旋转标题构建
+    model.param.set('rot_1', 'char_2'); %COMSOL中设置参数
+    char_3 = strcat('sca',num2str(i_1)); %颗粒比例缩放标题构建
+    model.param.set('sca_1', 'char_3'); %COMSOL中设置参数
+    char_4 = strcat('move',num2str(i_1)); %颗粒移动标题构建
+    model.param.set('move_1', 'char_4'); %COMSOL中设置参数
+%模型复制
+    model.component('comp1').geom('geom1').create(char_1, 'Copy');%模型复制模块构建
+model.component('comp1').geom('geom1').feature(char_1).selection('input').set({'imp1'});%设定需要复制的域
+%模型旋转
+    model.component('comp1').geom('geom1').create(char_2, 'Rotate'); %模型旋转模块构建
+    model.component('comp1').geom('geom1').feature(char_2).set('specify', 'eulerang');%欧拉角格式设置
+    model.component('comp1').geom('geom1').feature(char_2).set('eulerang', [a_idle_1 a_idle_2 a_idle_3]); %欧拉角数值导入
+model.component('comp1').geom('geom1').feature(char_2).selection('input').set({char_1});%设定需要旋转的域
+%模型比例缩放
+model.component('comp1').geom('geom1').create('char_3', 'Scale'); %模型比例缩放模块构建
+model.component('comp1').geom('geom1').feature('sca1').set('isotropic', c_1);%设定模型比例
+model.component('comp1').geom('geom1').feature('sca1').set('pos', [0 0 0]);%设置比例缩放中心
+model.component('comp1').geom('geom1').feature(char_3).selection('input').set({char_2});%设定需要比例缩放的域
+%模型移动
+    model.component('comp1').geom('geom1').create(char_4, 'Move'); %模型移动模块构建
+    model.component('comp1').geom('geom1').feature(char_4).set('specify', 'pos'); 
+    model.component('comp1').geom('geom1').feature(char_4).set('oldpos', 'coord');
+    model.component('comp1').geom('geom1').feature(char_4).set('newpos', 'coord');
+model.component('comp1').geom('geom1').feature(char_4).setIndex('newposx', [x_1], 0); %模型x轴向移动信息导入
+model.component('comp1').geom('geom1').feature(char_4).setIndex('newposy', [y_1], 0); %模型y轴向移动信息导入
+model.component('comp1').geom('geom1').feature(char_4).setIndex('newposz', [z_1], 0); %模型z轴向移动信息导入
+model.component('comp1').geom('geom1').feature(char_4).selection('input').set({char_3}.);%设定需要移动的域
+end%退出循环
+%生成模型
+model.component('comp1').geom('geom1').run;
+model.component('comp1').geom('geom1').run('fin');
+disp('模型构建完成')
