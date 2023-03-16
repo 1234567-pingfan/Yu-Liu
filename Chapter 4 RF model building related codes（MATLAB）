@@ -1,0 +1,55 @@
+%%电压设置
+model.param.set('b_b', '容器长度'); %全局变量设置容器长度参数
+model.param.set('v', '输入带速');%全局变量设置带速参数
+model.param.set('param_t0', ' b_b *3600/v');%计算移动到下一个位置的时间t0
+model.param.set('param_t_all', 'param_t0*倍数');%计算样品传送总时间
+%分段电压模块设置
+model.component('comp1').func('pw1').set('arg', 't');%分段电压设置为时间的函数
+model.component('comp1').func('pw1').setIndex('pieces', 0, 0, 0);%第一个分段电压下限
+model.component('comp1').func('pw1').setIndex('pieces', 'param_t0', 0, 1);%第一段电压上限
+model.component('comp1').func('pw1').setIndex('pieces', 't^3/param_t0^3', 0, 2);%第一段电压函数值
+model.component('comp1').func('pw1').setIndex('pieces', 'param_t0', 1, 0);%第二段电压下限
+model.component('comp1').func('pw1').setIndex('pieces', '3*param_t0', 1, 1); %第二段电压上限
+model.component('comp1').func('pw1').setIndex('pieces', 1, 1, 2); %第二段电压函数值
+model.component('comp1').func('pw1').setIndex('pieces', '3*param_t0', 2, 0); %第三段电压下限
+model.component('comp1').func('pw1').setIndex('pieces', 'param_t_all', 2, 1); %第三段电压上限
+model.component('comp1').func('pw1').setIndex('pieces', '(param_t_all-t)^3/param_t0^3', 2, 2); %第三段电压函数值
+model.component('comp1').func('pw1').set('argunit', 's');%设置自变量函数单位
+model.component('comp1').func('pw1').label([native2unicode(hex2dec({'52' '9f'}), 'unicode')  native2unicode(hex2dec({'73' '87'}), 'unicode') native2unicode(hex2dec({'6b' 'd4'}), 'unicode') ]);%函数标定语句，根据程序调整
+model.component('comp1').physics('ec').feature('pot1').set('V0', '预测电压*sqrt(分段电压)');%设置电压
+%%温度信息提取
+model.result.numerical.create('av1', 'AvVolume');%构建体平均温度计算模块
+model.result.numerical('av1').selection.set([填入颗粒域标号]);%计算域选择
+model.result.numerical('av1').set('dataseries', 'maximum');%后处理计算最大值
+model.result.table.create('tbl2', 'Table');%结果显示在表2
+model.result.table('tbl2').comments([native2unicode(hex2dec({'4f' '53'}),'unicode')  native2unicode(hex2dec({'79' 'ef'}), 'unicode')  native2unicode(hex2dec({'5e' '73'}), 'unicode')  native2unicode(hex2dec({'57' '47'}), 'unicode') ': ' native2unicode(hex2dec({'4f' '53'}), 'unicode')  native2unicode(hex2dec({'79' 'ef'}), 'unicode')  native2unicode(hex2dec({'5e' '73'}), 'unicode')  native2unicode(hex2dec({'57' '47'}), 'unicode') ' 1']);
+model.result.numerical('av1').set('table', 'tbl2'); %结果显示在表2
+model.result.numerical('av1').setResult;%计算结果
+
+%%水平移动温度及电压赋值
+a = 0;%平移距离
+model.param.set('a',a(1));% COMSOL中设置参数
+b = model.result().numerical('av1').getReal;%样品在混合前的终温
+model.param.set('b',b(1));% COMSOL中设置参数
+o = 0;%第0次混合
+model.param.set('o',o(1)); % COMSOL中设置参数
+str=sprintf('model.save(''D:\\MATLAB docu\\donglivelink\\test%d.mph'')',o);%保存初始文件
+eval(str);
+o = 1;%第o次混合
+model.param.set('o',o(1)); % COMSOL中设置参数
+while (o<=混合次数−1) %进入循环
+ ModelUtil.showProgress(true);%显示计算图标
+    a = a +螺距;%样品向前移动的距离
+    model.param.set('a',a(1)); % COMSOL中设置参数
+    c = ΔT;%热损失温度设置
+    model.param.set('c',c(1)); % COMSOL中设置参数
+b = model.result().numerical('av1').getReal;%样品在混合前的终温
+model.param.set('b',b(1));% COMSOL中设置参数
+    d = b – c;%混合后样品的初始温度
+    model.param.set('d',d(1)); % COMSOL中设置参数
+mode.component('comp1').geom('geom1'),feature('mov2').selection('input').set({'imp2'});%设置移动模块
+mode.component('comp1').geom('geom1'),feature('mov2').set('displx', 'a');%向前移动
+mode.component('comp1'). physics('ht').feature('init1').set('Tinit', 'd');%设定下一个样品混合初始温度
+model.component('comp1').physics('ec').feature('pot1').set('V0', '预测电压*sqrt(分段电压函数(t+o*param_t0))');%设置电压
+model.sol('sol1').runAll;%计算下一个样品混合仿真
+end%退出循环
