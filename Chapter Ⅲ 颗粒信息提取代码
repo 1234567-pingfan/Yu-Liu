@@ -1,5 +1,0 @@
-h5disp('文件名.h5');%查找库
-h5disp('文件名.h5','/TimestepData/步长时间/ParticleTypes/0');%目标库
-data_position = h5read('文件名.h5','/TimestepData/步长时间/ParticleTypes/0/position');%读取颗粒位置
-data_scale = h5read('15.h5','/TimestepData/步长时间/ParticleTypes/0/scale');%读取颗粒大小
-data_number = size(data,2);%读取颗粒个数
